@@ -5,4 +5,7 @@ authors = ["Daniel Jay Haskin <djhaskin987@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-clap = "~2.27.0"
+clap = "2"
+path-clean = "0.1"
+rusqlite = "0.19"
+

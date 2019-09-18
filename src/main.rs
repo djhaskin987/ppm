@@ -1,8 +1,14 @@
+mod init;
+mod install;
+use install::install_package;
+use init::initialize_package_database;
 extern crate clap;
 use clap::{Arg, App, SubCommand};
+use path_clean::PathClean;
 use std::path::PathBuf;
 
-fn main() {
+
+fn main() -> Result<(),Box<dyn std::error::Error>> {
     let matches = App::new("Project Package Manager")
         .version("0.1.0")
         .author("Daniel Jay Haskin")
@@ -19,7 +25,7 @@ fn main() {
              .value_name("PATH")
              .help("Use a custom root path")
              .takes_value(true))
-        .arg(Arg::with_name("verbose")
+       .arg(Arg::with_name("verbose")
              .short("v")
              .long("verbose")
              .multiple(true)
@@ -44,10 +50,24 @@ fn main() {
         .map_or(
             std::env::current_dir().unwrap_or(PathBuf::from(".")),
             |p| { PathBuf::from(p) }
-            );
-    let config_path = PathBuf::from(matches.value_of("config").unwrap_or(root_path.as_path().join("ppm.yml")));
-on
+        );
+    let config_path = matches
+        .value_of("config").map_or(
+            root_path.as_path().join("ppm.yml"),
+            |f| { root_path.as_path().join(f).clean() }
+        );
     println!("{:?}", matches);
     println!("{:?}", root_path);
     println!("{:?}", config_path);
+    let verbosity_level = matches.occurrences_of("v");
+    println!("{:?}", verbosity_level);
+
+    if let Some(_) = matches.subcommand_matches("init") {
+        initialize_package_database(&root_path)?;
+    } else if let Some(matches) = matches.subcommand_matches("install") {
+        let location = matches.value_of("LOCATION").unwrap();
+        install_package(location)?;
+    }
+
+    return Ok(());
 }
