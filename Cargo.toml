@@ -8,4 +8,5 @@ edition = "2018"
 clap = "2"
 path-clean = "0.1"
 rusqlite = "0.19"
-
+stderrlog = "0.4"
+log = "0.4"

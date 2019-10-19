@@ -2,15 +2,22 @@ mod init;
 mod install;
 use install::install_package;
 use init::initialize_package_database;
+
+#[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate log;
+extern crate stderrlog;
+
 use clap::{Arg, App, SubCommand};
 use path_clean::PathClean;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 
 fn main() -> Result<(),Box<dyn std::error::Error>> {
     let matches = App::new("Project Package Manager")
-        .version("0.1.0")
+        .version(crate_version!())
         .author("Daniel Jay Haskin")
         .about("Package Manager for Projects")
         .arg(Arg::with_name("config")
@@ -25,11 +32,19 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
              .value_name("PATH")
              .help("Use a custom root path")
              .takes_value(true))
-       .arg(Arg::with_name("verbose")
+       .arg(Arg::with_name("verbosity")
              .short("v")
              .long("verbose")
              .multiple(true)
              .help("Sets the level of verbosity"))
+       .arg(Arg::with_name("quiet")
+            .short("q")
+            .help("Silence all output"))
+       .arg(Arg::with_name("timestamp")
+            .short("t")
+            .help("prepend log lines with a timestamp")
+            .takes_value(true)
+            .possible_values(&["none", "sec", "ms", "ns"]))
         .subcommand(SubCommand::with_name("init")
                     .about("Initialize package database"))
         .subcommand(SubCommand::with_name("install")
@@ -56,17 +71,25 @@ fn main() -> Result<(),Box<dyn std::error::Error>> {
             root_path.as_path().join("ppm.yml"),
             |f| { root_path.as_path().join(f).clean() }
         );
-    println!("{:?}", matches);
-    println!("{:?}", root_path);
     println!("{:?}", config_path);
-    let verbosity_level = matches.occurrences_of("v");
-    println!("{:?}", verbosity_level);
+    let verbosity_level = matches.occurrences_of("verbosity") as usize;
+    let quiet = matches.is_present("quiet");
+    let use_timestamps = matches.value_of("timestamp").map(|timestamp| {
+        stderrlog::Timestamp::from_str(timestamp).unwrap()
+    }).unwrap();
+
+    stderrlog::new()
+        .module(module_path!())
+        .quiet(quiet)
+        .verbosity(verbosity_level)
+        .timestamp(use_timestamps)
+        .init()
+        .unwrap();
 
     if let Some(_) = matches.subcommand_matches("init") {
         initialize_package_database(&root_path)?;
     } else if let Some(matches) = matches.subcommand_matches("install") {
-        let location = matches.value_of("LOCATION").unwrap();
-        install_package(location)?;
+        install_package(matches.value_of("LOCATION").unwrap())?;
     }
 
     return Ok(());
